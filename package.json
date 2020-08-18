@@ -1,0 +1,55 @@
+{
+  "name": "ont-to-ts",
+  "version": "0.0.0",
+  "description": "Converts an RDF ontology to a set of typescript definitions",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "precommit": "pretty-quick --staged",
+    "prepare": "tsc",
+    "build": "tsc",
+    "start": "ts-node src/index.ts"
+  },
+  "keywords": [
+    "Typescript",
+    "Ontology",
+    "Convert",
+    "RDF",
+    "N3",
+    "Turtle"
+  ],
+  "author": "Jesse Wright",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/async": "^3.2.3",
+    "@types/node": "^14.0.26",
+    "husky": "^4.2.5",
+    "prettier": "^2.0.5",
+    "pretty-quick": "^2.0.1",
+    "ts-node": "^8.10.2",
+    "typescript": "^4.0.0-dev.20200802"
+  },
+  "dependencies": {
+    "@comunica/actor-init-sparql-file": "^1.14.0",
+    "@ldflex/comunica": "^3.4.0",
+    "@rdfjs/data-model": "^1.1.2",
+    "@rdfjs/parser-n3": "^1.1.4",
+    "@rdfjs/serializer-jsonld": "^1.2.2",
+    "@ts-morph/bootstrap": "^0.5.2",
+    "@types/crypto-js": "^3.1.47",
+    "@types/n3": "^1.4.3",
+    "@types/ramda": "^0.27.11",
+    "@types/rdfjs__parser-n3": "^1.1.2",
+    "@types/rdfjs__serializer-jsonld": "^1.2.2",
+    "async": "^3.2.0",
+    "crypto-js": "^4.0.0",
+    "dprint": "^0.12.0",
+    "ldflex": "^2.11.1",
+    "n3": "^1.5.0",
+    "ramda": "^0.27.0",
+    "ramda-extension": "^0.10.3",
+    "rdflib": "^1.2.3",
+    "ts-mixer": "^5.3.0",
+    "ts-morph": "^7.1.3"
+  }
+}

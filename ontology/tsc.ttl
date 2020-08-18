@@ -1,0 +1,40 @@
+@prefix tsc: <http://anu.edu.au/ont-to-ts#> .
+@prefix dc: <http://purl.org/dc/terms/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix schema: <https://schema.org/> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix vann: <http://purl.org/vocab/vann/> .
+@base <http://anu.edu.au/ont-to-ts#> .
+
+tsc: rdf:type owl:Ontology ;
+dc:creator [
+    schema:name "Jesse Wright"@en ;
+    schema:identifier <http://orcid.org/0000-0002-5771-988X> ;
+    schema:email <mailto:jesse.wright@anu.edu.au> ;
+    schema:affiliation <https://www.anu.edu.au> ;
+] ;
+rdfs:label "The Ontology to Typescript (ont-to-ts) ontology"@en .
+
+# Perhaps this should be an xsd:uri
+# tp:typescriptOntology a rdfs:Resource ;
+#     rdfs:label "The location of a typescript serialisation of an Ontology"@en .
+
+tsc:conversionLocation a owl:ObjectProperty ;
+    rdfs:domain owl:Ontology ;
+    rdfs:range xsd:uri ;
+    rdfs:comment "A relation between an Ontology IRI and the typescript serialisation of that file"@en ;
+    rdfs:label "Conversion Location."@en .
+
+tsc:propertyConversion a owl:ObjectProperty .
+
+tsc:JSDoc a owl:Thing .
+tsc:convertToTs a owl:Thing .
+tsc:defaults a owl:Thing .
+tsc:folder a owl:Thing .
+tsc:file a owl:Thing .
+tsc:outDir a owl:Thing .
+tsc:typescript a owl:Thing .
