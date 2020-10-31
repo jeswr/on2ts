@@ -43,5 +43,6 @@ function handlePerson(person: Person): void {
     {...}
   else
     {...}
+}
 ```
 Disclaimer: This library is under active development so many features are unstable. Work on this library will continue in Mid November.
