@@ -20,10 +20,10 @@ function loadPiece (piece: ex.Piece) {
 function async makePayment(user: Person, amt: number) {
   const payingUser = await schimatosLoader(new PayingUser(user))
     
-  switch (`${await payingUser.preferredMethod}’) {
-    case `${card}’:
+  switch ('${await payingUser.preferredMethod}') {
+    case '${card}':
       return card(await Person.card, amt)
-    case `${payPal}’: 
+    case '${payPal}': 
       return payPal(await Person.payPal, amt)        
     default: 
       return bitCoin(await Person.bitCoin, amt)}
@@ -31,7 +31,7 @@ function async makePayment(user: Person, amt: number) {
 ```
 ### Using the (overridden) instanceof operator
 ```ts
-John = new foaf.Person(‘ex:John’)
+John = new foaf.Person('ex:John')
 John instanceof foaf.Person     // true
 John instanceof foaf.Agent      // true
 foaf.Agent instanceof owl.Class // true
