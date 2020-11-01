@@ -1,2 +1,2 @@
 # ont-to-ts
-Converts an RDF ontology to a set of typescript definitions
+Future work that is to be merged to the main on2ts branch
