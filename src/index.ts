@@ -1,17 +1,165 @@
-// TODO: CLEAN AND MODULARISE FILE CONTENTS - At the moment it is more just a set of exsperiments
-
-import { newEngine } from '@comunica/actor-init-sparql-file'
-import CommunicaEngine from '@ldflex/comunica'
-import * as fs from 'fs'
+// @ts-ignore
 import { PathFactory } from 'ldflex'
-import { namedNode } from '@rdfjs/data-model'
-import R from 'ramda'
-import { CodeBlockWriter, NamespaceDeclaration, Project, SourceFile, NamedNode, ts, HeritageClauseableNode } from 'ts-morph'
-import { owl, rdf, rdfs, sh, tsc} from '../typescript'
-import { cleanName } from './utils/index'
-import asy from 'async'
-import { create } from 'domain'
-import { Base } from './base-classes'
+// @ts-ignore
+import CommunicaEngine from '@ldflex/comunica'
+import { newEngine } from '@comunica/actor-init-sparql-file'
+import { ns as RDF } from '../typescript/rdf/src/enums'
+import { ns as RDFS } from '../typescript/rdfs/src/enums'
+import { ns as OWL } from '../typescript/owl/src/enums'
+import { ns as sh } from '../typescript/sh/src/enums'
+// import * as sh_class from '../typescript/sh/src/classes'
+
+
+import { Project, CodeBlockWriter, PropertySignatureStructure, OptionalKind, ChildOrderableNode, SourceFile, NamedNode } from 'ts-morph'
+import R, { all, values, project } from 'ramda'
+import {cleanName} from './utils'
+// import path from 'path'
+
+
+// type Source = string | { value: string, type: string } | Source[]
+
+// /**
+//  * Asynchronous iterator wrapper for the Comunica SPARQL query engine.
+//  */
+// export default class ComunicaEngine {
+//   constructor(
+//       defaultSource: string,
+//       public _engine = newEngine()
+//       ) {
+//     // Preload sources but silence errors; they will be thrown during execution
+//     this._sources = this.parseSources(defaultSource);
+//     this._sources.catch(() => null);
+//   }
+
+//   /**
+//    * Creates an asynchronous iterable of results for the given SPARQL query.
+//    */
+//   async* execute(sparql: string, source: string) {
+//     if ((/^\s*(?:INSERT|DELETE)/i).test(sparql))
+//       yield* this.executeUpdate(sparql, source);
+
+//     // Load the sources if passed, the default sources otherwise
+//     const sources = await (source ? this.parseSources(source) : this._sources);
+//     if (sources.length !== 0) {
+//       // Execute the query and yield the results
+//       const queryResult = await this._engine.query(sparql, { sources });
+//       yield* queryResult.bindingsStream;
+//     }
+//   }
+
+//   /**
+//    * Creates an asynchronous iterable with the results of the SPARQL UPDATE query.
+//    */
+//   async* executeUpdate(sparql: string, source: Source) {
+//     throw new Error(`SPARQL UPDATE queries are unsupported, received: ${sparql}`);
+//   }
+
+//   /**
+//    * Parses the source(s) into an array of Comunica sources.
+//    */
+  
+//   async parseSources(
+//       source: Promise<Source> = new Promise((res) => res([]))
+//     ): Promise<Source> {
+
+//     let sources = await source;
+
+//     // Transform URLs or terms into strings
+//     if (sources instanceof URL)
+//       sources = sources.href;
+//     else if (sources instanceof NamedNode)
+//       sources = sources?.value;
+
+//     // Strip the fragment off a URI
+//     if (sources instanceof String)
+//       sources = [sources.replace(/#.*/, '')];
+//     // Flatten recursive calls to this function
+//     else if (sources instanceof Array)
+//       sources = await flattenAsync(sources.map((s: Promise<Source>) => (this.parseSources(s))));
+
+//     // Needs to be after the string check since those also have a match functions
+//     else if (sources.match instanceof Function)
+//       sources = {...source, type: 'rdfjsSource'}
+      
+//     //   [Object.assign({ type: 'rdfjsSource' }, sources)];
+//     // Wrap a single source in an array
+//     else if (source.value instanceof String)
+//       sources = [sources];
+//     // Error on unsupported sources
+//     else
+//       throw new Error(`Unsupported source: ${source}`);
+
+//     // Add Comunica source details
+//     return sources.map(src => ({
+//       value: src.value || src,
+//       type: src.type,
+//     }));
+//   }
+
+
+//   /**
+//    * Removes the given document (or all, if not specified) from the cache,
+//    * such that fresh results are obtained next time.
+//    */
+//   async clearCache(document) {
+//     await this._engine.invalidateHttpCache(document);
+//   }
+// }
+
+// // Flattens the given array one level deep
+// async function flattenAsync(array: Promise<any>[]) {
+//   return (await Promise.all(array)).flat()
+// }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// TODO: Auto import and use the suggested shapes graph
+
+type Validator<T = any> = {
+    validator: (value: T) => boolean,
+    message: string | ((value: T) => string)
+}
+
+const quer = `
+SELECT DISTINCT ?subject
+WHERE {
+    ?subject ?predicate ?object
+}
+ORDER BY str(?subject)
+`
 
 const classesQ = async (instance: string) => `
 SELECT DISTINCT ?object
@@ -20,29 +168,82 @@ WHERE {
 }
 ORDER BY str(?object)
 `
+const getNodeSHAPES = async (instance: string) => `
+SELECT DISTINCT ?nodeshape
+WHERE {
+    ?nodeshape a <${sh.NodeShape}> ;
+        <${sh.targetClass}> <${instance}> .
+}`
+
+const getPropertySHAPES = async (instance: string) => `
+SELECT DISTINCT ?propertyshape
+WHERE {
+    ?propertyshape a <${sh.PropertyShape}> ;
+        <${sh.targetClass}> <${instance}> .
+}`
 
 const quote = (str: string) => {
     return new CodeBlockWriter().quote(`${str}`).toString()
 }
 
 const makeName = (IRI: string) => {
-    return cleanName((/(?![\/#])[^\/#]*$/.exec(`${IRI}`) || [])[0] || '')
+    const nameToAppend = cleanName((/(?![\/#])[^\/#]*$/.exec(`${IRI}`) || [])[0] || '')
+
+
+    return nameToAppend
 }
 
 const makeList = (array: string[]) => {
-    return '[' + array.join(', ') + ']'
+    return '[' + array.join(', ') + ']'//new CodeBlockWriter().write('[' + array.join(', ') + ']').toString()
 }
 
+// const findBaseInPrefixes = (subjects: any[], prefixes) => {
+
+//     return Object.values(prefixes).find(prefix => {
+//         return subjects.every(subject => {
+//             return subject.id.startsWith(prefix)
+//         })
+//     })
+    
+//       // TODO: Add the ability in the settings file to get around this
+//       // throw new Error(`Cannot determine the Ontology base, options are ${value}`)
+
+//   }
+  
+//   const findBaseFromCommonStart = (subjects: any[]): string => {
+    
+    
+    
+    
+//     const strings: string[]  = subjects.map(x => x.id)
+  
+//     strings.toLocaleString
+
+//     return strings.reduce((start: string, term: string) => {
+//     const len = Math.min(start.length, term.length)
+    
+      
+//       let newStart = ''
+//       for (let i = 0; i < len; i++) {
+//         if (start[i] === term[i]) {
+//           newStart += start[i]
+//         } else {
+//           return newStart
+//         }
+//       }
+//       return newStart
+//     }, strings[0] ?? '')
+//   }
 function cleanFile(file: SourceFile) {
     file.fixMissingImports()
     for (let val; val != (val = file.print());) {
         file.fixUnusedIdentifiers()
         file.organizeImports()
     }
+    file.formatText()
 }
-
-
 class MyProject extends Project {
+   
     clean() {
         for (let val; val != (val = this.getSourceFiles().map(node => node.print()).toString());) {
             this.getSourceFiles().forEach(cleanFile)
@@ -50,126 +251,20 @@ class MyProject extends Project {
         return this
     }
 
-    async finalize(keepOldDir: boolean = false) {
-        if (!keepOldDir) {
-            [...this.getRootDirectories().map(p => p.getPath(), this.compilerOptions.get().outDir)]
-                .forEach(path => {fs.rmdirSync(path, {recursive: true})})
-        }
-        await this.clean().save()
-        await this.emit()
-        return this
+    initialize() {
+
     }
+
+    finalize() {
+        this.getRootDirectories().forEach(path => path.deleteImmediatelySync())
+        // this.getTypeChecker()
+        this.clean().saveSync()
+        return this.emitSync()
+    }
+
 }
-
-type baseStore = string | NamedNode
-type storeObj = {
-    primary : baseStore;
-    other : baseStore | baseStore[];
-} | baseStore | baseStore[]
-
-type storeConstructor = storeObj | {[type: string]: storeObj}
-
-
-class StoreHandlers {
-
-    stores: {
-        [type: string] : {
-            primary : PathFactory,
-            others: PathFactory[]
-        }
-    } = {}
-
-    initStore(store: baseStore, settings?: {}) {
-        // TODO: Expand this to handle other any triplestore
-        const queryEngine = new CommunicaEngine(store)
-        queryEngine._engine = newEngine()
-        return new PathFactory({ queryEngine, context : {}})
-    }
-
-    constructor (stores : storeConstructor) {
-        // TODO: Expand to handle any type of the above format
-
-    }
-}
-
-// Note that we can use "reverse : true" in LDFlex
-
-// import myRDF from '../typescript_2/rdf/src'
-
-// myRDF.value
-
-// const myBag = new myRDF.Bag('test')
-
-class PathFactoryExtended {
-    pathFactory : any
-    [x: string] : any
-    ontologiesToUse: {
-        [x: string]: any;
-        ns : Enumerator<string>;
-    }[] = [
-        rdfs,
-        owl,
-        rdf
-    ]
-    
-    constructor(location: string) {
-
-        const queryEngine = new CommunicaEngine(location)
-        queryEngine._engine = newEngine()
-
-        this.pathFactory = new PathFactory({ queryEngine, context: {} })
-    }
-}
-
-import myRDF from '../typescript_2/rdf/src'
-
-const myFactory = (location: string) => new Proxy(new PathFactoryExtended(location), {
-
-    get: async function* (target, name) {
-
-        for await (const result of target.pathFactory.create({ subject : namedNode('') })[name]) {
-            
-            const type = `${await result[RDF.type]}`
-
-            result.subject = target.ontologiesToUse.find(ontology => new ontology[ontology.ns[type]]?.(`${result}`)) || result.subject
-
-            // for (const ontology of target.ontologiesToUse) {
-            //     if (type in ontology.ns) {
-            //         result.subject = new ontology[ontology.ns[type]](`${result}`)
-            //         break;
-            //     }
-            // }
-
-            yield* result
-        }
-    }
-})
-
-// async function myTestingFunction() {
-//     for await (const subject of myFactory('ontology/owl.ttl').subjects) { 
-//         console.log(subject instanceof OWL.Ontology)
-//         console.log(`${subject}`)
-//     }
-// }
-
-// myTestingFunction()
-// // console.log(`${myRDF.subject}`, `${myRDF.subject.id}`)
-
-// // async function testingExtendedPathFactory() {
-// //     const ontology = new PathFactoryExtended('ontology/owl.ttl')
-
-// //     for await (const subject of ontology.subjects) {
-// //         const testType = await subject[myRDF.type]
-// //         if (testType instanceof myRDF.subject) {
-// //             console.log(`${await subject} is of type ${testType} which is an instance of ${myRDF.subject} (${myRDF.subject.id})`)
-// //         }
-// //     }
-// // }
-
-// // testingExtendedPathFactory()
-
-
-async function createOntology (filePath: string, emitAt: string, shacl: string | undefined, base: string) {
+  
+async function createOntology (filePath: string, emitAt: string, shacl: string) {
     
     const sourceFiles = new MyProject()
     const source = sourceFiles.addSourceFileAtPath(
@@ -179,176 +274,78 @@ async function createOntology (filePath: string, emitAt: string, shacl: string |
 
     const project = new MyProject({
         compilerOptions: {
-          outDir: require('path').join('typescript_2', emitAt, 'build'),
+          outDir: require('path').join('typescript', emitAt, 'build'),
           declaration: true
         }
       });
     
-    const createFile = (name: string, folder?: string) => project.createSourceFile(
-        !folder ? require('path').join('typescript_2', emitAt, 'src', `/${name}.ts`)
-            : require('path').join('typescript_2', emitAt, 'src', folder, `/${name}.ts`),
+    const createFile = (name: string) => project.createSourceFile(
+        require('path').join('typescript', emitAt, 'src', `/${name}.ts`),
         '',
         { overwrite: true }
     );
 
-        // const stores = new StoreHandlers({
-        //     ontology: filePath,
-        //     shacl,
-        //     mapping
-        // })
-
-
-        const queryEngine = new CommunicaEngine(filePath)
-        queryEngine._engine = newEngine()
-        
-        const queryEngineSHACL = new CommunicaEngine(shacl)
-        queryEngineSHACL._engine = newEngine()
-    
-        const queryEngineMapping = new CommunicaEngine('ontology-folder-mapping.ttl')
-        queryEngineMapping._engine = newEngine()
-    
-        // const queryEngineWithImports = new CommunicaEngine(filePath)
-        // queryEngineWithImports._engine = newEngine()
-        const addedSources = [
-            // filePath, 
-            'ontology/owl.ttl',
-            'ontology/rdf.ttl',
-            'ontology/rdfs.ttl',
-            'ontology/xsd.ttl',
-            'ontology/dcelems.ttl',
-            'ontology/dctype.ttl',
-            'ontology/ld.ttl',
-            'ontology/schema.ttl',
-            'ontology/shacl.ttl',
-            'ontology/tsc.ttl'
-        ]
-        
-
-
-        const path = new PathFactory({ queryEngine, context: {} })
-        const shapes = new PathFactory({ queryEngine: queryEngineSHACL, context: {} })
-        const mapping = new PathFactory({ queryEngine: queryEngineMapping, context : {} })
-        
-        const maps = mapping.create({subject: namedNode('') })
-
-
-
-        const createImported = async (name: string, folder?: string) => {
-            const file = createFile(name, folder)
-            file.addImportDeclaration({ moduleSpecifier: './index', namedImports: ['Classes', 'ClassInterface', 'Properties', 'PropertyInterface', 'ns'] })
-            file.addImportDeclaration({ moduleSpecifier: '../../../src/base-classes', namespaceImport: 'Base' })
-
-            for await (const map of maps.subjects) {
-                const name = `${await map[tsc.folder]}`
-                file.addImportDeclaration({
-                    namespaceImport: /[a-z]*$/i.exec(name.replace('/src', ''))?.[0] ?? '',
-                    moduleSpecifier: name
-                })
-            }
-     
-            
-            return file.addNamespace({
-                name,
-                isExported: true
-            })
-        }
-
-        const createImported2 = async (name: string, folder?: string) => {
-            const file = createFile(name, folder)
-            file.addImportDeclaration({ moduleSpecifier: '../index', namedImports: ['Classes', 'ClassInterface', 'Properties', 'PropertyInterface', 'ns'] })
-            file.addImportDeclaration({ moduleSpecifier: '../../../../src/base-classes', namespaceImport: 'Base' })
-
-            for await (const map of maps.subjects) {
-                const name = `../${await map[tsc.folder]}`
-                file.addImportDeclaration({
-                    namespaceImport: /[a-z]*$/i.exec(name.replace('/src', ''))?.[0] ?? '',
-                    moduleSpecifier: name
-                })
-            }
-
-            file.addImportDeclaration({
-                namespaceImport: 'sh',
-                moduleSpecifier: '../../sh'
-            })
-     
-            
-            return file
-        }
-        
-        const classes = await createImported2('index', 'Classes')
-        const classInterface = await createImported2('index', 'ClassInterfaces')
-        const properties = await createImported2('index', 'Properties')
-        const propertyInterface = await createImported2('index', 'PropertyInterfaces')
-        
-        const enumsFile = createFile('ns')
-        enumsFile.addImportDeclaration({ moduleSpecifier: 'index.ts' })
-    
-        const enums = enumsFile.addEnum({
-            name: 'ns',
+    const createImported = (name: string) => {
+        const file = createFile(name)
+        // file.addImportDeclaration({ moduleSpecifier: './index', namedImports: ['Classes', 'ClassInterface', 'Properties', 'PropertyInterface', 'ns', 'Base'] })
+        return file.addNamespace({
+            name,
             isExported: true
         })
+    }
     
-        // createFile('').addExportDeclaration({
-        //     expo
-        // })
+    const classes = createImported('Classes')
+    const classInterface = createImported('ClassInterface')
+    const properties = createImported('Properties')
+    const propertyInterface = createImported('PropertyInterface')
+    
+    const enumsFile = createFile('ns')
+    enumsFile.addImportDeclaration({ moduleSpecifier: 'index.ts' })
 
-        const index = createFile('index')
-        // index.addExportDeclarations([
-        //     ...project.getSourceFiles().filter(name =>  name.getBaseName() !== 'index.ts')
-        //     .map(name => ({ moduleSpecifier : './' + name.getBaseName().replace('.ts', ''),
-        //     namespaceExport : name.getBaseName().replace('.ts', '')
-        //     //namedExports : [name.getBaseName().replace('.ts', '')] 
-        
-        // }))])
+    const enums = enumsFile.addEnum({
+        name: 'ns',
+        isExported: true
+    })
 
-        index.addImportDeclarations([{
-            moduleSpecifier : './Classes',
-            namespaceImport : 'Classes'
-        }, {
-            moduleSpecifier : './Properties',
-            namespaceImport : 'Properties'
+
+    createFile('index').addExportDeclarations([
+        ...project.getSourceFiles().filter(name =>  name.getBaseName() !== 'index.ts')
+        .map(name => ({ moduleSpecifier : './' + name.getBaseName().replace('.ts', ''), namedExports : [name.getBaseName().replace('.ts', '')] })), {
+            moduleSpecifier: '../../../src/base-classes', namedExports: ['Base']
         }])
 
-        // index.addStatements([{
-        //     statements
-        //     isD
-        // }])
-        
-        index.addExportAssignment({
-            isExportEquals : false,
-            expression : '{ ...Classes, ...Properties }',
-        })
-
-        index.addExportDeclarations([{
-            moduleSpecifier: './Classes',
-            namespaceExport: 'Classes'
-        }, {
-            moduleSpecifier: './ClassInterfaces',
-            namespaceExport: 'ClassInterfaces'
-        }, {
-            moduleSpecifier: './Properties',
-            namespaceExport: 'Properties'
-        }, {
-            moduleSpecifier: './PropertyInterfaces',
-            namespaceExport: 'PropertyInterfaces'
-        }, {
-            moduleSpecifier: './ns',
-            namedExports: ['ns']
-        }])
-        
-        // .addVariableStatement({
-        //     isDefaultExport: true,
-        //     declarations: [{
-        //         name: 'toExport',
-        //         initializer: '{ ...Classes, ...Properties }'
-        //      }]
-        // })
-        
-        // addExportAssignment({
-
-        //     expression: '{ ...Classes, ...Properties }'
-        // })
+    // Setting up the query engine
+    // may need to set up bigger quqery
+    const queryEngine = new CommunicaEngine(filePath)
+    queryEngine._engine = newEngine()
     
+    const queryEngineSHACL = new CommunicaEngine(shacl)
+    queryEngineSHACL._engine = newEngine()
+
+    const queryEngineMapping = new CommunicaEngine('../ontology-folder-mapping.ttl')
+    queryEngineMapping._engine = newEngine()
+
+    // const queryEngineWithImports = new CommunicaEngine(filePath)
+    // queryEngineWithImports._engine = newEngine()
+    const addedSources = [
+        // filePath, 
+        'ontology/owl.ttl',
+        'ontology/rdf.ttl',
+        'ontology/rdfs.ttl',
+        'ontology/xsd.ttl',
+        'ontology/dcelems.ttl',
+        'ontology/dctype.ttl',
+        'ontology/ld.ttl',
+        'ontology/schema.ttl',
+        'ontology/shacl.ttl',
+        'ontology/tsc.ttl'
+    ]
+    
+    const path = new PathFactory({ queryEngine, context: {} })
+    const shapes = new PathFactory({ queryEngine: queryEngineSHACL, context: {} })
+    const mapping = new PathFactory({ queryEngine: queryEngineMapping, context : {} })
+
+
     // console.log(queryEngineMapping.)
     
     
@@ -357,27 +354,29 @@ async function createOntology (filePath: string, emitAt: string, shacl: string |
     // || findBaseFromCommonStart(subjects)
 
 
-        const addName = async (uri: string, navigate?: string, navigateInternal?: boolean): Promise<string> => {
-            if (`${uri}`.startsWith(base)) {
-                return (navigateInternal ? navigate + '.' : '') + makeName(uri)
-            } else {
-                for await (const res of queryEngineMapping.execute(`
-                SELECT DISTINCT ?prefix
-                WHERE {?s ?p ?prefix
-                    FILTER(REGEX(str(?s), '${/^[^]*[\/#]/.exec(uri)}[/#]?'))
-                }
-                `)) {
-                    const prefix = /[^\/#]*$/.exec(res._root.entries[0][1].id.replace(/"/g, '').replace('/src', ''))?.[0] ?? ''
-                    return `${prefix}${navigate ? '.' + navigate : ''}.${makeName(uri)}`
-                }
-            }
-            return ''
-        }
-        
+
+    for await (const res of queryEngine.execute(quer)) {
+
+        if (res._root.entries[0][1].termType === 'NamedNode') {
+
+            const instance = path.create({ subject: res._root.entries[0][1] });
+
+            // @ts-ignore
+          //  const myInstance = ingest(instance)
+
+            // let tags = []
 
 
-    for await (const instance of path.create({ subject : namedNode('') }).subjects) {
-        if (await instance.termType === 'NamedNode') {
+            // The goal is to be *able* to write this
+            // for await (const property of myInstance) {
+            //     // I think we need to overload these classes
+            //     if (property instanceof OWL.Class.AnnotationProperty) {
+            //         tags.push(await myInstance[property].toString())
+            //     }
+            // }
+            
+            
+
             
             const docs = [{
                 description: `${await instance[RDFS.label]}`,
@@ -385,51 +384,41 @@ async function createOntology (filePath: string, emitAt: string, shacl: string |
                     
                 ]
             }]
+            // console.log('query', getNodeSHAPES(await instance))
+
+            
+
+            // console.log(quer)
+
+            // for await (const shape of queryEngineSHACL.execute(getNodeSHAPES(await instance))) {
+
+            //     // const shapePath = shapes.create({ subject: shape._root.entries[0][1] })
+
+            //     console.log('shape path', shape)
+
+            // }
+
+            // const shacls = shapes.create({ object: instance })
+
+            // for await (const shacl of shacls) {
+            //     console.log('shacl', shacl)
+            // }
+
+            // console.log('shacls', shacls)
 
             // TODO: NAME FILTERING
             const id = `${await instance}`
             const name = makeName(id)
             
-
-
-            enums.addMember({ name, value: id })
+            enums.addMember({
+                name, value: id
+            })
 
             let OWLTYPE: OWL.Class | OWL.ObjectProperty | undefined = undefined
-
-            const types = []
-
-            // const addTypes = async (types: string[]) => {
-            //     let queried = []
-            //     for (let len = types.length; len != (len = types.length);) {
-            //         for await (const prop of queryEngine.execute(await classesQ(type), addedSources)) {
-            //             types.push(prop._root.entries[0][1].id)
-            //         }
-            //     }
-            // }
-
-            // for (let len = 0; len != (len = types.length);) {
-
-            // }
-
-
-            
-            // Goal - to be able to import existing typescript conversions and hence write the below 10 lines of code as
-            // if (instance instanceof OWL.Class) {
-            //     // do thing 1
-            // } else if (instanceof OWL.DatatypeProperty) {
-            //     // do thing 2
-            // } else {
-            //     // console.log
-            // }
-
-            const addProp = async (prop: string, navigate?: string, navigateInternal?: boolean) => {
-                return addName(await instance[prop], navigate, navigateInternal)
-            }
 
             const reQueryType = async (types: string[]): Promise<string[]> => {
 
                 const superClasses = []
-
 
                 for (const type of types) {
                     for await (const prop of queryEngine.execute(await classesQ(type), addedSources)) {
@@ -444,6 +433,7 @@ async function createOntology (filePath: string, emitAt: string, shacl: string |
                 }
                 
                 return await reQueryType(allClasses)
+        
             }
 
             const allClass = await reQueryType([await instance])
@@ -456,20 +446,33 @@ async function createOntology (filePath: string, emitAt: string, shacl: string |
                     OWLTYPE = OWL.ObjectProperty
                 }
             }
-         
+            
+            // console.log('all classes', allClass)
+            // if (OWL.Class in allClass) {
+            //     OWLTYPE = OWL.Class
+            // } else if (OWL.ObjectProperty in allClass) {
+            //     OWLTYPE = OWL.ObjectProperty
+            // }
+
+            // for await (const prop of queryEngine.execute(await classesQ(await instance), addedSources)) {
+            //     const cl = prop._root.entries[0][1].id
+            //     console.log(cl)
+                // if (cl === OWL.Class || cl === OWL.ObjectProperty) {
+                //     if (OWLTYPE) {
+                //         console.log('both', OWLTYPE, cl)
+                //     }
+                //     OWLTYPE = cl
+                // }
+            // }
 
             if (OWLTYPE === OWL.Class) {
 
                 let subClasses = [];
 
-                // instance[RDFS.sub]
-                
-                
-
                 for await (const subClass of instance[RDFS.subClassOf]) {
                     if (subClass.termType === 'NamedNode') {
                         // TODO: WORK OUT IF A PREFIX NEEDS TO BE ADDED
-                        subClasses.push(await addName(await subClass, 'Classes'))
+                        subClasses.push(makeName(await subClass))
                     } else {
                         // TODO: THis is quite complex behavior
                         // where the super class is inferred based
@@ -478,36 +481,33 @@ async function createOntology (filePath: string, emitAt: string, shacl: string |
                     }
                 }
 
-                // WANT shapes[instance].reversed(sh.targetClass)
-
-                // Should we be checking for a nodeShape?
-                const relevantShapes = shapes.create({ subject : namedNode(`${await instance}`) })
-                
+                const quer = queryEngineSHACL.execute(await getNodeSHAPES(await instance))
 
                 let constraints: string[] = []
-                //asy.forEach
-                
-                // asy.map(relevantShapes, shape => {
 
-                // })
+                for await (const s of quer) {
 
-                tess.r_this
-                
-                for await (const shape of relevantShapes[{ reverse : true, predicate : sh.targetClass }]) {
+                    const shape = shapes.create({ subject: s._root.entries[0][1] });
+                    
                     for await (const constraint of shape) {
-                        constraints.push(`new sh.classes.${makeName(constraint)}(${shape[constraint]})`)
                         // @ts-ignore
                         // if (sh.validator in sh_class[makeName(constraint) as string]) {
+                        //     // TODO: Deal with the case where shape[constraint] is a list
                         //     constraints.push(`new sh.classes.${makeName(constraint)}(${shape[constraint]})`)
                         // }
                     }
                 }
+                    
+                    // const sourceClass  = source.getClass(name)
+                    // console.log('sourceClass', name, sourceClass)
+                    // console.log(sourceClass && sourceClass.getMethods)
+                    // console.log(sourceClass && sourceClass.getProperties)
 
-                const newClass = (await createImported2(name, 'Classes')).addClass({ 
+                classes.addClass({ 
                     name,
                     extends: 'Base.ClassBase',
                     isExported: true,
-                    implements: [`ClassInterfaces.${name}`, ...subClasses.map(x => x.replace('.Classes.', '.ClassInterfaces.'))],
+                    implements: [`ClassInterface.${name}`],
                     properties: [{
                         isStatic: true,
                         name: 'id',
@@ -521,13 +521,14 @@ async function createOntology (filePath: string, emitAt: string, shacl: string |
                     }, {
                         isStatic: true,
                         name: 'type',
-                        type: 'Base.ClassType',
+                        type: 'typeof Base.ClassBase',
                         // TODO: FIX
-                        initializer: await addProp(RDF.type, 'Classes')
+                        initializer: makeName(await instance[RDF.type])
                     }, {
                         isStatic: true,
                         name: 'subClassOf',
-                        type: 'Base.ClassType[]',
+                        // Move this typeof stuff into an external delcaration file
+                        type: '(typeof Base.ClassBase)[]',
                         initializer: makeList(subClasses)
                     }, {
                         isStatic: true,
@@ -544,23 +545,21 @@ async function createOntology (filePath: string, emitAt: string, shacl: string |
                         type: 'any'
                     }, {
                         name: 'properties',
-                        type: 'Base.InternalProperties',
-                        initializer: '{}'
+                        type: 'Base.InternalProperties = {}'
                     }]
-                });
-
-                for (const file of sourceFiles.getSourceFiles()) {
-                    if(name) newClass.addMembers(file.getClass(name)?.getMembers().map(x => x.print()) ?? [])
-                }
-
-                (await createImported2(name, 'ClassInterfaces')).addInterface(newClass.extractInterface()).setIsExported(true)
-
-                classes.addExportDeclaration({
-                    moduleSpecifier: './' + name
                 })
 
-                classInterface.addExportDeclaration({
-                    moduleSpecifier: './' + name
+                classInterface.addInterface({
+                    name,
+                    isExported: true,
+                    extends: ['Base.ClassBaseInterface', ...subClasses],
+                    properties: [{
+                        name: 'value',
+                        type: 'any'
+                    }, {
+                        name: 'properties',
+                        type: 'Base.InternalProperties'
+                    }]
                 })
 
             } else if (OWLTYPE === OWL.ObjectProperty) {
@@ -568,13 +567,10 @@ async function createOntology (filePath: string, emitAt: string, shacl: string |
 
                 let subProperties = [];
 
-                // const subProperties2 = asy.filter(instance[RDFS.subPropertyOf], ({termType}) => termType === 'NamedNode')
-
                 for await (const subClass of instance[RDFS.subPropertyOf]) {
                     if (subClass.termType === 'NamedNode') {
                         // TODO: WORK OUT IF A PREFIX NEEDS TO BE ADDED
-                        // console.log('searching for subproperty')
-                        subProperties.push(await addName(subClass, 'Properties'))
+                        subProperties.push(makeName(await subClass))
                     } else {
                         // TODO: THis is quite complex behavior
                         // where the super class is inferred based
@@ -582,19 +578,70 @@ async function createOntology (filePath: string, emitAt: string, shacl: string |
                         // console.log(`${await subClass[RDF.type]}`)
                     }
                 }
- 
+                // TODO: Properly
+                // console.log('domain', `${await instance[RDFS.domain]}`)
+                // console.log('range', `${await instance[RDFS.range]}`)
+
+                const sourceClass  = source.getClass(name)
+                // console.log('sourceClass', name, sourceClass)
+                const methodsFromSource = (sourceClass && sourceClass.getMethods()) || []
+                const propertiesFromSource = (sourceClass && sourceClass.getProperties()) || []
+
+
+                const nodes = methodsFromSource.map(x => x.compilerNode)
+                   // x.compilerNode.name)
+
+                // const formattedMethods: Parameter[] = methodsFromSource.map((x): OptionalKind<PropertySignatureStructure> => ({
+                //     name: x.getNodeProperty('name').print(),
+                //     param: x.getNodeProperty('initializer')
+
+                //     // parameters: x.getNodeProperty('parameters'),
+                    
+                // }))
+
+                const formattedSourceProperties = propertiesFromSource.map(x => ({
+                    name: x.getNodeProperty('name').print(),
+                    // @ts-ignore
+                    type: x.getNodeProperty('type') && x.getNodeProperty('type').print(),
+                    // @ts-ignore
+                    isStatic: x.getNodeProperty('isStatic') && x.getNodeProperty('isStatic').print(),
+                    // @ts-ignore
+                    initializer: x.getNodeProperty('initializer') && x.getNodeProperty('initializer').print()
+                })
+                )
+
 
                 // TODO: Filter out stuff like "SubClassOf"
                 // and merge this with the existing properties
-                // console.log(formattedSourceProperties)
+                console.log(formattedSourceProperties)
 
-                // TODO: FIx domain and range
-                const newProperty = (await createImported2(name, 'Properties')).addClass({ 
+                properties.addClass({ 
                     name,
                     docs: docs,
                     isExported: true,
-                    extends: 'Base.PropertyBase',
-                    implements: [`PropertyInterfaces.${name}`, ...subProperties.map(x => x.replace('.Properties.', '.PropertyInterfaces.'))],
+                    extends: 'Base.BaseProperty',
+                    implements: [`PropertyInterface.${name}`],
+                    methods: 
+                    // [{
+                    //     name: 'hi',
+                    //     parameters: [{
+                    //         name: 'test'
+                    //     }]
+                    // }]
+                    
+                    methodsFromSource.map(x => ({
+                        name: x.compilerNode.name.getText(),
+                        parameters: x.compilerNode.parameters.map(y => ({
+                            name: y.name.getText(),
+                            type: y.type && y.type.getText()
+                        })),
+                        typeParameters: x.getTypeParameters().map(f => f.print()),
+                        isStatic: x.isStatic().valueOf(),
+                        isAsync: x.isAsync().valueOf(),
+                        returnType: x.getReturnType().getText(),
+                        statements: x.getStatements().map(x => x.print())
+                        // impleme: x.getImplementation  
+                    })),
                     properties : [{
                         isStatic: true,
                         name: 'id',
@@ -604,27 +651,25 @@ async function createOntology (filePath: string, emitAt: string, shacl: string |
                         isStatic: true,
                         name: '[Symbol.toStringTag]',
                         type: 'string',
-                        initializer: quote(`${await instance[RDFS.label] ?? name}`)
+                        initializer: quote(`${await instance[RDFS.label] || name}`)
                     }, {
                         isStatic: true,
                         name: 'type',
-                        type: 'Base.PropertyType',
+                        type: 'typeof Base.BaseProperty',
                         // TODO: FIX
-                        initializer: await addProp(RDF.type, 'Properties')//makeName(await instance[RDF.type])
+                        initializer: makeName(await instance[RDF.type])
                     }, {
                         isStatic: true,
                         name: 'domain',
-                        type: 'Base.ClassType[]',
-                        initializer: '[' + await addProp(RDFS.domain, 'Classes', true) + ']'
+                        initializer: makeName(await instance[RDFS.domain])
                     }, {
                         isStatic: true,
                         name: 'range',
-                        type: 'Base.ClassType[]',
-                        initializer: '[' + await addProp(RDFS.range, 'Classes', true) + ']'
+                        initializer: makeName(await instance[RDFS.range])
                     }, {
                         isStatic: true,
                         name: 'subPropertyOf',
-                        type: 'Base.PropertyType[]',
+                        type: '(typeof Base.ClassBase)[]',
                         initializer: makeList(subProperties)
                     }, {
                         isStatic: true,
@@ -641,23 +686,18 @@ async function createOntology (filePath: string, emitAt: string, shacl: string |
                     }, {
                         name: 'value',
                         type: 'any'
-                    }
+                    }, ...formattedSourceProperties//, ...nodes
                 ]
-                });
-
-
-                for (const file of sourceFiles.getSourceFiles()) {
-                    if(name) newProperty.addMembers(file.getClass(name)?.getMembers().map(x => x.print()) ?? [])
-                }
-
-                (await createImported2(name, 'ClassInterfaces')).addInterface(newProperty.extractInterface()).setIsExported(true)
-
-                properties.addExportDeclaration({
-                    moduleSpecifier: './' + name
                 })
 
-                propertyInterface.addExportDeclaration({
-                    moduleSpecifier: './' + name
+                propertyInterface.addInterface({
+                    name,
+                    isExported: true,
+                    extends: ['Base.BasePropertyInterface', ...subProperties],
+                    properties: [{
+                        name: 'value',
+                        type: 'any'
+                    }, ...formattedSourceProperties.filter(x => !x.isStatic).map(({isStatic, initializer, ...props}) => props)]
                 })
 
 
@@ -701,104 +741,57 @@ async function createOntology (filePath: string, emitAt: string, shacl: string |
 
 
     } 
+    // const typeChecker = project.getTypeChecker()
 
-    // ops(classes, classInterface, sourceFiles)
-    // ops(properties, propertyInterface, sourceFiles)
     project.finalize()
 }
 
-
-
-// function ops(classes: NamespaceDeclaration, iface: NamespaceDeclaration, source: MyProject): void {
-//     for (const cl of classes.getClasses()) {
-//         iface.addInterface(cl.extractInterface()).setIsExported(true)
-//         const name = cl.getName()
-//         for (const file of source.getSourceFiles()) {
-//             if(name) cl.addMembers(file.getClass(name)?.getMembers().map(x => x.print()) ?? [])
-//         }
-//     }
-// }
-
-
-
-// const name = c.getName()
-// if (name) {
-//     sourceFiles.getSourceFiles().forEach(file => {
-//         c.addMembers(file.getClass(name)?.getMembers().map(x => x.print()) ?? [])
-//     })
-
-
-//     for (const file of sourceFiles.getSourceFiles()) {
-//         c.addMembers((file.getClass(name)?.getMembers().map(x => x.print()) ?? [])
-//         // const cls = file.getClass(name)
-//         // if (cls) {
-//         //     c.addMembers(cls.getMembers().map(x => x.print()))
-//         // }
-//     }
-// }
-
-// export async function executeFromSettings(settingsPath: string): Promise<void> {
-//     const queryEngine = new CommunicaEngine(settingsPath)
-//     queryEngine._engine = newEngine()
-//     const path = new PathFactory({ queryEngine, context: {} })
-//     const settings = path.create({ subject: '' })
-
-//     for await (const ontology of settings.subjects) {
-
-//     }
-
-
-
-
-
-    
-    
-//     // const settings = (await createStore(settingsPath)).store;
-  
-//     // // May need to have better handling of local vs. global
-//     // // file paths
-//     // const toCovertFromFolders = settings.getObjects(tsc.convertToTs, tsc.folder, null)
-//     //   .map(
-//     //     folder => {
-//     //       console.log('folder', folder);
-//     //       return readdirSync(folder.value).map(file => {
-//     //         return path.join(folder.value, file);
-//     //       });
-//     //     })
-//     //   .flat();
-  
-//     // const toCovertFromFiles = settings.getObjects(tsc.convertToTs, tsc.file, null)
-//     //   .map(
-//     //     file => path.join(file.value)
-//     //   );
-  
-//     // const defaultOutputDirectory = settings.getObjects(tsc.defaults, tsc.outDir, null)[0]
-//     //   || settings.getObjects(tsc.defaults, tsc.typescript, null)[0];
-  
-//     // const toConvert = R.union(toCovertFromFolders, toCovertFromFiles);
-  
-//     // console.log(`ont-to-ts will generate typescript files for the following files: ${toConvert.join(' ')}\n`)
-//     // let count = 1
-//     // for (const ontologyPath of toConvert) {
-//     //   if (defaultOutputDirectory?.value) {
-//     //     console.log(`[${count++}/${toConvert.length}] Generating ontology from ${ontologyPath}...`)
-//     //     await generateTypeScript(ontologyPath, settingsPath, defaultOutputDirectory.value);
-//     //   }
-//     //   else {
-//     //     throw new Error(`No output folder specified in the settings`);
-//     //   }
-//     // }
-//   }
-  
 
 
 
 
 
 // createOntology('ontology/agrif.ttl', 'agrif')
-createOntology('ontology/rdf.ttl', 'rdf', undefined, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#')
-createOntology('ontology/rdfs.ttl', 'rdfs', undefined, 'http://www.w3.org/2000/01/rdf-schema#')
-createOntology('ontology/owl.ttl', 'owl', undefined, 'http://www.w3.org/2002/07/owl#')
-createOntology('ontology/xsd.ttl', 'xsd', '../xsd-shacls/xsd-shacl.ttl', 'http://www.w3.org/2001/XMLSchema')
-createOntology('ontology/shacl.ttl', 'sh', 'shacl-shacl.ttl', 'http://www.w3.org/ns/shacl')
+createOntology('ontology/xsd.ttl', 'xsd', '../xsd-shacls/xsd-shacl.ttl')
+createOntology('ontology/shacl.ttl', 'sh', 'shacl-shacl.ttl')
 
+// async function prnt() {
+//     const path = createOntology('ontology/agrif.ttl')
+//     // path.queryEngine()
+//     // const affects = path.create({ predicate: namedNode(RDF.type) });
+
+//     // console.log(await affects)
+
+//     // for await (const subject of affects.subjects) {
+//     //     console.log(`${await subject}`)
+//     // }
+
+
+//     // const subjects = path.create({ predicate: namedNode(RDF.type) });
+//     // console.log(await subjects)
+
+//     // for await (const subject of path.subjects) {
+//     //     console.log(`${await subject}`)
+//     // }
+
+// }
+
+// prnt()
+
+// const ontology = createOntology('ontology/agrif.ttl')
+// console.log(`${await path}`)
+
+
+// // // The object that can create new paths
+// queryEngine._engine = newEngine()
+
+// const path = new PathFactory({ context, queryEngine });
+
+
+// const prt = async () => {
+//     for await (const label of ruben.label) {
+//       console.log(`${await ruben.label}`)
+//     }
+//     // console.log('ruben', await ruben.label)
+// }
+// prt()

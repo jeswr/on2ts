@@ -4,7 +4,6 @@ import * as R from 'ramda';
 import { ns as tsc } from '../typescript/tsc/typescript/ns';
 import { createStore } from "./n3-processing/create-store";
 import { generateTypeScript } from '.';
-
 export async function executeFromSettings(settingsPath: string): Promise<void> {
   const settings = (await createStore(settingsPath)).store;
 

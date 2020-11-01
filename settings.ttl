@@ -1,0 +1,28 @@
+@prefix tsc: <http://anu.edu.au/ont-to-ts#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix dc: <http://purl.org/dc/terms/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+tsc:settings tsc:allowEdits true .
+
+# Property conversions to use
+rdfs:label tsc:propertyConversion tsc:JSDoc .
+rdfs:comment tsc:propertyConversion tsc:JSDoc .
+rdfs:description tsc:propertyConversion tsc:JSDoc .
+rdfs:seeAlso tsc:propertyConversion tsc:JSDoc .
+
+# Perhaps conversion location should be npm name?
+
+ tsc:defaults tsc:typescript 'typescript'^^xsd:literal ;
+    tsc:ontology 'ontology'^^xsd:literal
+    .
+
+# tsc:convertToTs tsc:folder 'ontology'^^xsd:literal ;
+#    tsc:file 'ontology/agrif.ttl'^^xsd:literal.
+
+tsc:convertToTs tsc:file 'ontology/agrif.ttl' .
+tsc:convertToTs tsc:file 'ontology/rdf.ttl' .
+tsc:convertToTs tsc:file 'ontology/shacl.ttl' .
+
+# add setting to allow npm require

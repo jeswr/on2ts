@@ -1,0 +1,4 @@
+{  
+    "String" : ["pattern", "languageIn", "uniqueLang", "maxLength", "minLength"],
+    "Numeric" : ["maxInclusive", "minExclusive", "minInclusive", "maxInclusive"]
+}

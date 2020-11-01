@@ -130,6 +130,7 @@ class maxLength {
     [sh.message](node: Base.BaseClass) {
         return `value should have at most ${this.value} characters`
     }
+
 }
 
 class minCount {
@@ -140,7 +141,6 @@ class minCount {
     }
 
 }
-
 
 class minExclusive {
     value: number

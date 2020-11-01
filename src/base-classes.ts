@@ -1,4 +1,4 @@
-// export namespace Base {
+export namespace Base {
     export type ValidatorFunc<T> = (value: T) => boolean
 
     export type Validator<T = any> = {
@@ -38,12 +38,11 @@
             return []
         }
 
-        static [Symbol.hasInstance](obj: any, checked : BaseType[] = []): boolean {
+        static [Symbol.hasInstance](obj: any): boolean {
             return obj.constructor === this // myClass instance of Class
                 || obj.rdfType === this  // Class instancofClass || Class instanceOf Resource
                 || obj.constructor.__proto__ === this // myClass instnaceof classBase
-                || obj.constructor.getExtends?.().some((extend: typeof Base) => extend instanceof this) // this.hasInstance(extend, checked) ?
-                // Need to prevent infinite loops with classes that reference themselves
+                || obj.constructor.getExtends?.().some((extend: typeof Base) => extend instanceof this)
         }
 
         [Symbol.toStringTag]() {
@@ -171,9 +170,8 @@
         static id = 'PROPERTY BASE'
         static [Symbol.toStringTag] = 'PROPERTY BASE'
 
-        static domain: ClassType[]
-        static range: ClassType[]
-        static type: PropertyType
+        static domain: ClassBase[]
+        static range: ClassBase[]
 
         static subPropertyOf: PropertyType[]
 
@@ -227,6 +225,6 @@
 
         value: any;
     }
-// }
+}
 
 
