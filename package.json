@@ -41,7 +41,7 @@
     "@types/ramda": "^0.27.11",
     "@types/rdfjs__parser-n3": "^1.1.2",
     "@types/rdfjs__serializer-jsonld": "^1.2.2",
-    "async": "^3.2.0",
+    "async": "^3.2.2",
     "crypto-js": "^4.0.0",
     "dprint": "^0.12.0",
     "ldflex": "^2.11.1",
