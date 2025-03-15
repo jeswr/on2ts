@@ -1,4 +1,7 @@
 # on2ts
+
+> ⚠️ this library is unmaintained - I recommend using [RDFJS tools](https://rdfjs.dev) like [LDO](https://rdfjs.dev/ldo) instead if you're looking for shapes-based tooling
+
 Typescript generation from OWL ontologies and SHACL
 
 on2ts is a developer tool that automatically converts OWL definitions and SHACL constraints into Typescript classes and interfaces which developers can import directly into their applications.
